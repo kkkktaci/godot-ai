@@ -119,21 +119,24 @@ const _WINDOWS_EXEC_EXTS := [".exe", ".cmd", ".bat", ".com"]
 ## in Godot's output log (#251). Picking a path with a real executable
 ## extension dodges that entirely.
 ##
-## Falls back to the first non-empty line when no entry has a recognised
+## Extension scan is the OUTER loop so the order in `_WINDOWS_EXEC_EXTS`
+## drives preference — `.exe` wins over `.cmd` even when the `.cmd` shows
+## up first in `where` output (one fewer process per shell-out). Falls
+## back to the first non-empty line when no entry has a recognised
 ## extension, so we never come up empty when `where` returned *something*.
 static func _pick_best_path(lines: PackedStringArray) -> String:
-	var fallback := ""
+	var stripped := PackedStringArray()
 	for raw in lines:
 		var line := raw.strip_edges()
-		if line.is_empty():
-			continue
-		if fallback.is_empty():
-			fallback = line
-		var lower := line.to_lower()
-		for ext in _WINDOWS_EXEC_EXTS:
-			if lower.ends_with(ext):
-				return line
-	return fallback
+		if not line.is_empty():
+			stripped.append(line)
+	if stripped.is_empty():
+		return ""
+	for ext in _WINDOWS_EXEC_EXTS:
+		for candidate in stripped:
+			if candidate.to_lower().ends_with(ext):
+				return candidate
+	return stripped[0]
 
 
 static func _well_known_dirs() -> Array[String]:
